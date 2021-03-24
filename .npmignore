@@ -1,8 +1,10 @@
 src/
-test/
+tests/
 docs/
 .idea/
-babel.config.js
 rollup.config.js
-tsconfig.js
+jest.config.js
+babel.config.json
+tsconfig.json
+tsconfig.declarations.json
 

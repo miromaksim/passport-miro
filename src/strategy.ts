@@ -3,6 +3,7 @@ import type {Request} from 'express'
 import fetch from 'node-fetch'
 import MiroTokenError from './errors/MiroTokenError'
 import MiroRestApiError from './errors/MiroRestApiError'
+import {URL} from 'url'
 
 interface UserObject {
 	type: 'user'
@@ -13,15 +14,17 @@ interface UserObject {
 	createdAt?: string
 	company?: string
 	picture?: {
-		type: 'picture',
-		imageUrl: string,
+		type: 'picture'
+		imageUrl: string
 		id: string
 	}
 	name?: string
 	state?: string
 }
 
-interface _StrategyOptionsBase extends OAuth2Strategy._StrategyOptionsBase {
+interface _StrategyOptionsBase extends Partial<OAuth2Strategy._StrategyOptionsBase> {
+	clientID: string
+	clientSecret: string
 	/**
 	 * Miro REST API version (v1 by default)
 	 */
@@ -54,26 +57,23 @@ export interface AuthenticateOptions {
 }
 
 export interface StrategyOptions extends _StrategyOptionsBase {
-	passReqToCallback: false
+	passReqToCallback?: false
 }
 export interface StrategyOptionsWithRequest extends _StrategyOptionsBase {
-	passReqToCallback: true
+	passReqToCallback?: true
 }
 
-export class Strategy extends OAuth2Strategy.Strategy {
+export class Strategy extends OAuth2Strategy {
 	static readonly Strategy = Strategy
 
 	private readonly teamId: string | undefined
 	private readonly teamIdQueryParamName: string | undefined
 	private readonly profileUrl: string
+	private readonly profileFields: string[]
 
-	constructor(verify: OAuth2Strategy.VerifyFunction)
 	constructor(options: StrategyOptions, verify: OAuth2Strategy.VerifyFunction)
 	constructor(options: StrategyOptionsWithRequest, verify: OAuth2Strategy.VerifyFunctionWithRequest)
-	constructor(arg1: any, arg2?: any) {
-		const options = (typeof arg1 === 'function' ? {} : arg1 || {}) as _StrategyOptionsBase
-		const verify = typeof arg1 === 'function' ? arg1 : arg2
-
+	constructor(options: any, verify: any) {
 		options.apiVersion = options.apiVersion || 'v1'
 		options.authorizationURL = options.authorizationURL || 'https://miro.com/oauth/authorize'
 		options.tokenURL = options.tokenURL || `https://api.miro.com/${options.apiVersion}/oauth/token`
@@ -83,6 +83,7 @@ export class Strategy extends OAuth2Strategy.Strategy {
 		this.teamId = options.teamId
 		this.teamIdQueryParamName = options.teamIdQueryParamName
 		this.profileUrl = options.profileUrl || `https://api.miro.com/${options.apiVersion}/users/me`
+		this.profileFields = options.profileFields
 	}
 
 	authenticate(req: Request, options?: AuthenticateOptions): void {
@@ -102,11 +103,23 @@ export class Strategy extends OAuth2Strategy.Strategy {
 	}
 
 	async userProfile(accessToken: string, done: (err?: Error | null, profile?: UserObject) => void) {
-		const profileResponse = await fetch(this.profileUrl, {
-			headers: {
-				'Authorization': `Bearer ${accessToken}`,
-				'Content-Type': 'application/json'
+		let profileUrl: URL
+
+		try {
+			profileUrl = new URL(this.profileUrl)
+			if (this.profileFields && this.profileFields.length > 0) {
+				profileUrl.searchParams.append('fields', this.profileFields.join(','))
 			}
+		} catch (e) {
+			done(e)
+			return
+		}
+
+		const profileResponse = await fetch(profileUrl.href, {
+			headers: {
+				Authorization: `Bearer ${accessToken}`,
+				'Content-Type': 'application/json',
+			},
 		})
 
 		if (!profileResponse.ok) {

@@ -1,13 +1,12 @@
 import babel from '@rollup/plugin-babel'
 import nodeResolve from '@rollup/plugin-node-resolve'
-import commonjs from '@rollup/plugin-commonjs';
 import pkg from './package.json';
 
 const extensions = ['.ts']
 
 export default {
 	input: 'src/index.ts',
-	external: ['passport-oauth2', /node_modules/],
+	//external: ['node-fetch', 'passport-oauth2', /node_modules/],
 	output: [
 		{
 			file: pkg.main,
@@ -22,8 +21,8 @@ export default {
 	plugins: [
 		nodeResolve({
 			extensions,
+			resolveOnly: [''],
 		}),
-		commonjs(),
 		babel({
 			extensions,
 			babelHelpers: 'bundled',
