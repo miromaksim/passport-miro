@@ -1,6 +1,6 @@
 {
 	"name": "passport-miro",
-	"version": "0.0.1",
+	"version": "1.0.0",
 	"description": "Miro authentication strategy for Passport.",
 	"author": {
 		"name": "Maksim Lebedev",
