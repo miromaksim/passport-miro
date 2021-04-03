@@ -30,9 +30,9 @@ interface _StrategyOptionsBase extends Partial<OAuth2Strategy._StrategyOptionsBa
 	 */
 	apiVersion?: string
 	/**
-	 * REST API URL to get user profile
+	 * REST API base URL
 	 */
-	profileUrl?: string
+	apiBaseUrl?: string
 	/**
 	 * Profile fields to get
 	 */
@@ -68,21 +68,24 @@ export class Strategy extends OAuth2Strategy {
 
 	private readonly teamId: string | undefined
 	private readonly teamIdQueryParamName: string | undefined
-	private readonly profileUrl: string
+	private readonly apiBaseUrl: string
+	private readonly apiVersion: string
 	private readonly profileFields: string[]
 
 	constructor(options: StrategyOptions, verify: OAuth2Strategy.VerifyFunction)
 	constructor(options: StrategyOptionsWithRequest, verify: OAuth2Strategy.VerifyFunctionWithRequest)
 	constructor(options: any, verify: any) {
+		options.apiBaseUrl = options.apiBaseUrl || 'https://api.miro.com'
 		options.apiVersion = options.apiVersion || 'v1'
 		options.authorizationURL = options.authorizationURL || 'https://miro.com/oauth/authorize'
-		options.tokenURL = options.tokenURL || `https://api.miro.com/${options.apiVersion}/oauth/token`
+		options.tokenURL = options.tokenURL || new URL(`/${options.apiVersion}/oauth/token`, options.apiBaseUrl).href
 
 		super(options, verify)
 		this.name = 'miro'
 		this.teamId = options.teamId
 		this.teamIdQueryParamName = options.teamIdQueryParamName
-		this.profileUrl = options.profileUrl || `https://api.miro.com/${options.apiVersion}/users/me`
+		this.apiBaseUrl = options.apiBaseUrl
+		this.apiVersion = options.apiVersion
 		this.profileFields = options.profileFields
 	}
 
@@ -106,7 +109,7 @@ export class Strategy extends OAuth2Strategy {
 		let profileUrl: URL
 
 		try {
-			profileUrl = new URL(this.profileUrl)
+			profileUrl = new URL(`/${this.apiVersion}/users/me`, this.apiBaseUrl)
 			if (this.profileFields && this.profileFields.length > 0) {
 				profileUrl.searchParams.append('fields', this.profileFields.join(','))
 			}
@@ -158,7 +161,7 @@ export class Strategy extends OAuth2Strategy {
 		}
 
 		if (this.teamIdQueryParamName) {
-			return req.query[this.teamIdQueryParamName].toString()
+			return req.query[this.teamIdQueryParamName] as string
 		}
 
 		return this.teamId
